@@ -1,4 +1,3 @@
-// 조은재
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdbool.h>
@@ -16,6 +15,7 @@ struct myheader_hdr {
     uint64_t value;
     uint64_t txTime; // 전송 시간
     uint64_t latency;
+	uint64_t seqNum;
 } __attribute__((packed));
 
 int put(redisContext*, char*, char*);
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	initData(redis_context, NUM_KEYS); // 초기 데이터 등록
+	// initData(redis_context, NUM_KEYS); // 초기 데이터 등록
 
 	struct sockaddr_in cli_addr;
 	int cli_addr_len = sizeof(cli_addr);
@@ -129,7 +129,12 @@ int processReq(redisContext* c, struct myheader_hdr* RecvBuffer, struct myheader
 		SendBuffer->value = strtoull(value, NULL, 10);
 		SendBuffer->txTime = RecvBuffer->txTime;
 		SendBuffer->latency = RecvBuffer->latency;
+		SendBuffer->seqNum = RecvBuffer->seqNum;
+		
+		// printf("seq_num: %ld\n", SendBuffer->seqNum);
 		free(value);
+
+		return 0;
 	}
 	else if (RecvBuffer->op == 1) { // 쓰기(put) 요청 처리
 		char key_str[10], value_str[512];
@@ -145,12 +150,14 @@ int processReq(redisContext* c, struct myheader_hdr* RecvBuffer, struct myheader
 		SendBuffer->value = RecvBuffer->value;
 		SendBuffer->txTime = RecvBuffer->txTime;
 		SendBuffer->latency = RecvBuffer->latency;
+		SendBuffer->seqNum = RecvBuffer->seqNum;
+		// printf("seq_num: %ld\n", SendBuffer->seqNum);
+
+		return 0;
 	}
 	else {
 		// 예외 처리
 		printf("Invalid operation\n");
 		return -1;
 	}
-
-	return 0;
 }
