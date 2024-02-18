@@ -131,7 +131,7 @@ int processReq(redisContext* c, struct myheader_hdr* RecvBuffer, struct myheader
 		SendBuffer->latency = RecvBuffer->latency;
 		SendBuffer->seqNum = RecvBuffer->seqNum;
 		
-		printf("seq_num: %ld\n", SendBuffer->seqNum);
+		// printf("seq_num: %ld\n", SendBuffer->seqNum);
 		free(value);
 
 		return 0;
@@ -151,7 +151,7 @@ int processReq(redisContext* c, struct myheader_hdr* RecvBuffer, struct myheader
 		SendBuffer->txTime = RecvBuffer->txTime;
 		SendBuffer->latency = RecvBuffer->latency;
 		SendBuffer->seqNum = RecvBuffer->seqNum;
-		printf("seq_num: %ld\n", SendBuffer->seqNum);
+		// printf("seq_num: %ld\n", SendBuffer->seqNum);
 
 		return 0;
 	}
