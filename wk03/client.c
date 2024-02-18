@@ -34,7 +34,7 @@ uint64_t cal_99th(uint64_t*, int);
 uint64_t cal_median(uint64_t*, int);
 int compare(const void*, const void*);
 void recordLatencyStats(double, double);
-void recordLatency(uint64_t&, int);
+void recordLatency(uint64_t*, int);
 
 #define FILENAME "latency.txt"
 
@@ -272,7 +272,7 @@ void recordLatencystats(double median, double tailLatency) {
     fclose(file);
 }
 
-void recordLatency(uint64_t& latencies, int rxReqs) {
+void recordLatency(uint64_t* latencies, int rxReqs) {
     FILE* file = fopen(FILENAME, "a");
     if (file == NULL) {
         printf("Error opening file.\n");
