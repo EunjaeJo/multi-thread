@@ -221,7 +221,7 @@ void* rxThread(void* arg) {
         percentile_99 = (double)cal_99th(latencies, rxReqs);
         printf("99th percentile latency: %.2lf ns\n", (double)percentile_99);
 
-        recordLatencyStats(median, percentile_99);
+        // recordLatencyStats(median, percentile_99);
        
     }
 
