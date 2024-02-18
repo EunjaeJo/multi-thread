@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// initData(redis_context, NUM_KEYS); // 초기 데이터 등록
+	initData(redis_context); // 초기 데이터 등록
 
 	struct sockaddr_in cli_addr;
 	int cli_addr_len = sizeof(cli_addr);
@@ -131,7 +131,7 @@ int processReq(redisContext* c, struct myheader_hdr* RecvBuffer, struct myheader
 		SendBuffer->latency = RecvBuffer->latency;
 		SendBuffer->seqNum = RecvBuffer->seqNum;
 		
-		// printf("seq_num: %ld\n", SendBuffer->seqNum);
+		printf("seq_num: %ld\n", SendBuffer->seqNum);
 		free(value);
 
 		return 0;
@@ -151,7 +151,7 @@ int processReq(redisContext* c, struct myheader_hdr* RecvBuffer, struct myheader
 		SendBuffer->txTime = RecvBuffer->txTime;
 		SendBuffer->latency = RecvBuffer->latency;
 		SendBuffer->seqNum = RecvBuffer->seqNum;
-		// printf("seq_num: %ld\n", SendBuffer->seqNum);
+		printf("seq_num: %ld\n", SendBuffer->seqNum);
 
 		return 0;
 	}
