@@ -212,7 +212,7 @@ void* rxThread(void* arg) {
     if (rxReqs == totalReqs) {
         recordLatency(latencies, rxReqs);
 
-
+        
         // median latency
         median = (double)cal_median(latencies, rxReqs);
         printf("Median latency: %.2lf ns\n", (double)median);
@@ -221,8 +221,8 @@ void* rxThread(void* arg) {
         percentile_99 = (double)cal_99th(latencies, rxReqs);
         printf("99th percentile latency: %.2lf ns\n", (double)percentile_99);
 
-        recordLatency(median, percentile_99);
-        
+        recordLatencystats(median, percentile_99);
+       
     }
 
     return NULL;
