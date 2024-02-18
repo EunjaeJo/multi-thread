@@ -33,7 +33,8 @@ void* rxThread(void*);
 uint64_t cal_99th(uint64_t*, int);
 uint64_t cal_median(uint64_t*, int);
 int compare(const void*, const void*);
-void recordLatency(double, double);
+void recordLatencyStats(double, double);
+void recordLatency(uint64_t&, int);
 
 #define FILENAME "latency.txt"
 
@@ -85,7 +86,7 @@ int main(int argc, char* argv[]) {
     struct ThreadArgs tx_args = { .sock = sock, .srv_addr = srv_addr };
     struct ThreadArgs rx_args = { .sock = sock, .srv_addr = srv_addr, .cli_addr = cli_addr, .cli_addr_len = cli_addr_len };
 
-    
+
     // TARGET_QPS를 증가시키면서 재실행
     for (int qps = starting_QPS; qps <= 10000000; qps += 50) {
         close(sock);
@@ -184,7 +185,7 @@ void* rxThread(void* arg) {
         // 패킷 수신 이후 3초 동안 수신받지 못하면 종료
         if (rx < 0) {
             elapsedTime = get_cur_ns() - startTime;
-            if (elapsedTime / 1000000000 >= 3) { 
+            if (elapsedTime / 1000000000 >= 3) {
                 printf("Unable to receive packet\n");
                 break;
             }
@@ -209,6 +210,9 @@ void* rxThread(void* arg) {
 
     // 총 요청 수만큼 수신해야 latency 기록
     if (rxReqs == totalReqs) {
+        recordLatency(latencies, rxReqs);
+
+        /*
         // median latency
         median = (double)cal_median(latencies, rxReqs);
         printf("Median latency: %.2lf ns\n", (double)median);
@@ -218,6 +222,7 @@ void* rxThread(void* arg) {
         printf("99th percentile latency: %.2lf ns\n", (double)percentile_99);
 
         recordLatency(median, percentile_99);
+        */
     }
 
     return NULL;
@@ -255,7 +260,7 @@ int compare(const void* a, const void* b) {
     return (*(uint64_t*)a - *(uint64_t*)b);
 }
 
-void recordLatency(double median, double tailLatency) {
+void recordLatencystats(double median, double tailLatency) {
     FILE* file = fopen(FILENAME, "a");
     if (file == NULL) {
         printf("Error opening file.\n");
@@ -263,6 +268,21 @@ void recordLatency(double median, double tailLatency) {
     }
 
     fprintf(file, "%d    %.2lf    %.2lf\n", TARGET_QPS, median, tailLatency);
+
+    fclose(file);
+}
+
+void recordLatency(uint64_t& latencies, int rxReqs) {
+    FILE* file = fopen(FILENAME, "a");
+    if (file == NULL) {
+        printf("Error opening file.\n");
+        return;
+    }
+    
+    for (int i = 0; i < rxReqs; i++) {
+        double latency = latencies[i];
+        fprintf(file, "%d    %.2lf\n", TARGET_QPS, latency);
+    }
 
     fclose(file);
 }
