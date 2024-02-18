@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <hiredis/hiredis.h>
 
-#define NUM_KEYS 100000 // 요청 수
+#define NUM_KEYS 1000000 // 요청 수
 
 struct myheader_hdr {
     uint32_t op;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	initData(redis_context); // 초기 데이터 등록
+	initData(redis_context, NUM_KEYS); // 초기 데이터 등록
 
 	struct sockaddr_in cli_addr;
 	int cli_addr_len = sizeof(cli_addr);
