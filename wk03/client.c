@@ -221,7 +221,7 @@ void* rxThread(void* arg) {
         percentile_99 = (double)cal_99th(latencies, rxReqs);
         printf("99th percentile latency: %.2lf ns\n", (double)percentile_99);
 
-        recordLatencystats(median, percentile_99);
+        recordLatencyStats(median, percentile_99);
        
     }
 
@@ -260,7 +260,7 @@ int compare(const void* a, const void* b) {
     return (*(uint64_t*)a - *(uint64_t*)b);
 }
 
-void recordLatencystats(double median, double tailLatency) {
+void recordLatencyStats(double median, double tailLatency) {
     FILE* file = fopen(FILENAME, "a");
     if (file == NULL) {
         printf("Error opening file.\n");
