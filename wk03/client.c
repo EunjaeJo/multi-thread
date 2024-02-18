@@ -281,7 +281,7 @@ void recordLatency(uint64_t* latencies, int rxReqs) {
     
     for (int i = 0; i < rxReqs; i++) {
         double latency = latencies[i];
-        fprintf(file, "%d    %.2lf\n", TARGET_QPS, latency);
+        fprintf(file, "%d    %.2lf\n", rxReqs / 10, latency);
     }
 
     fclose(file);
