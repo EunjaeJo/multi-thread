@@ -146,7 +146,7 @@ void* txThread(void* arg) {
         struct myheader_hdr SendBuffer;
         memset(&SendBuffer, 0, sizeof(SendBuffer));
         SendBuffer.op = (rand() % 100 < WRITE_RATIO) ? 1 : 0;
-        SendBuffer.key = rand() % 100000;
+        SendBuffer.key = rand() % 1000000;
         SendBuffer.value = 1111;
         SendBuffer.txTime = get_cur_ns(); // 전송 시간 설정
         SendBuffer.latency = 0;
