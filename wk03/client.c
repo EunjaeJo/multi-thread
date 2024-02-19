@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 
 
     // TARGET_QPS를 증가시키면서 재실행
-    for (int qps = starting_QPS; qps <= 10000000; qps += 400) {
+    for (int qps = starting_QPS; qps <= 10000000; qps += 20) {
         close(sock);
         if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
             printf("Could not create socket\n");
