@@ -6,21 +6,23 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <hiredis/hiredis.h>
+#include <inttypes.h>
 
 #define NUM_KEYS 1000000 // 요청 수
 
+#pragma pack(1)
 struct myheader_hdr {
-    uint32_t op;
-    uint32_t key;
-    uint64_t value;
-    uint64_t txTime; // 전송 시간
-    uint64_t latency;
+	uint32_t op;
+	uint64_t key;
+	char value[128];
+	uint64_t txTime;
+	uint64_t latency;
 	uint64_t seqNum;
 } __attribute__((packed));
 
 int put(redisContext*, char*, char*);
 char* get(redisContext*, char*);
-void initData(redisContext*, int);
+void initData(redisContext*);
 int processReq(redisContext*, struct myheader_hdr*, struct myheader_hdr*);
 
 int main(int argc, char* argv[]) {
@@ -56,7 +58,7 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	initData(redis_context, NUM_KEYS); // 초기 데이터 등록
+	initData(redis_context); // 초기 데이터 등록
 
 	struct sockaddr_in cli_addr;
 	int cli_addr_len = sizeof(cli_addr);
@@ -82,18 +84,19 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-void initData(redisContext* c, int numOfKeys) {
-	for (int i = 0; i < numOfKeys; i++) {
-		char key[10]; // 정수 key값 문자열로 저장
+void initData(redisContext* c) {
+	for (int i = 0; i < NUM_KEYS; i++) {
+		char key[8];
 		sprintf(key, "%d", i);
-		put(c, key, "value");
+		// 임의의 128바이트 문자열
+		put(c, key, "initializedredisdatainitializedredisdatainitializedredisdatainitializedredisdatainitializedredisdatainitializedredisdatainitial\0");
 	}
 }
 
 int put(redisContext* c, char* key, char* value) {
 	// Redis 서버에 SET 전송
-	redisReply* reply = redisCommand(c, "SET %s %s", key, value); 
-	
+	redisReply* reply = redisCommand(c, "SET %s %s", key, value);
+
 	freeReplyObject(reply);
 
 	return 0;
@@ -106,10 +109,10 @@ char* get(redisContext* c, char* key) {
 	char* value;
 
 	if (reply->str == NULL) { // 할당되지 않은 key 값일 경우
-		 value = strdup("null");
+		value = strdup("null");
 	}
 	else {
-		 value = strdup(reply->str);
+		value = strdup(reply->str);
 	}
 
 	freeReplyObject(reply);
@@ -119,41 +122,54 @@ char* get(redisContext* c, char* key) {
 
 int processReq(redisContext* c, struct myheader_hdr* RecvBuffer, struct myheader_hdr* SendBuffer) {
 	if (RecvBuffer->op == 0) { // 읽기(get) 요청 처리
-		char key_str[10];
-		sprintf(key_str, "%d", RecvBuffer->key);
-		char* value = get(c, key_str); // key에 대한 value 받아옴
+		char key_str[8]; // 8바이트
+		snprintf(key_str, sizeof(key_str), "%"PRIu64, RecvBuffer->key);
+		char* value = get(c, key_str);
 
-		// 응답용 버퍼에 결과 저장
-		SendBuffer->op = 0;
-		SendBuffer->key = RecvBuffer->key;
-		SendBuffer->value = strtoull(value, NULL, 10);
-		SendBuffer->txTime = RecvBuffer->txTime;
-		SendBuffer->latency = RecvBuffer->latency;
-		SendBuffer->seqNum = RecvBuffer->seqNum;
-		
-		// printf("seq_num: %ld\n", SendBuffer->seqNum);
-		free(value);
+		if (value != NULL) {
+			SendBuffer->op = 0;
+			SendBuffer->key = RecvBuffer->key;
+			strncpy(SendBuffer->value, value, sizeof(SendBuffer->value) - 1);
+			SendBuffer->value[sizeof(SendBuffer->value) - 1] = '\0';
+			SendBuffer->txTime = RecvBuffer->txTime;
+			SendBuffer->latency = RecvBuffer->latency;
+			SendBuffer->seqNum = RecvBuffer->seqNum;
 
-		return 0;
+			// for debugging
+			// printf("Rx seq#: %ld\n", RecvBuffer->seqNum);
+
+			free(value);
+			return 0;
+		}
+		else {
+			printf("Error retrieving value from Redis\n");
+			return -1;
+		}
 	}
 	else if (RecvBuffer->op == 1) { // 쓰기(put) 요청 처리
-		char key_str[10], value_str[512];
-		sprintf(key_str, "%d", RecvBuffer->key);
-		sprintf(value_str, "%ld", RecvBuffer->value);
+		char key_str[8]; // 8바이트
+		snprintf(key_str, sizeof(key_str), "%"PRIu64, RecvBuffer->key);
+		redisReply* reply = (redisReply*)redisCommand(c, "SET %s %s", key_str, RecvBuffer->value);
 
-		// 쓰기 요청 Redis server에 저장
-		put(c, key_str, value_str);
+		if (reply && reply->type == REDIS_REPLY_STATUS && strcmp(reply->str, "OK") == 0) {
+			SendBuffer->op = 1;
+			SendBuffer->key = RecvBuffer->key;
+			SendBuffer->value[0] = RecvBuffer->value[0];
+			SendBuffer->txTime = RecvBuffer->txTime;
+			SendBuffer->latency = RecvBuffer->latency;
+			SendBuffer->seqNum = RecvBuffer->seqNum;
 
-		// 응답용 버퍼에 성공 결과 저장
-		SendBuffer->op = 1;
-		SendBuffer->key = RecvBuffer->key;
-		SendBuffer->value = RecvBuffer->value;
-		SendBuffer->txTime = RecvBuffer->txTime;
-		SendBuffer->latency = RecvBuffer->latency;
-		SendBuffer->seqNum = RecvBuffer->seqNum;
-		// printf("seq_num: %ld\n", SendBuffer->seqNum);
+			// for debugging
+			// printf("Rx seq#: %ld\n", RecvBuffer->seqNum);
 
-		return 0;
+			freeReplyObject(reply);
+			return 0;
+		}
+		else {
+			printf("Error storing value in Redis\n");
+			if (reply) freeReplyObject(reply);
+			return -1;
+		}
 	}
 	else {
 		// 예외 처리
