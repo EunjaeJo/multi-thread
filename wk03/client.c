@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
     totalReqs = starting_QPS * TOTAL_SECONDS;
 
     int SERVER_PORT = 5001;
-    const char* server_name = "130.127.134.79";
+    const char* server_name = "130.127.134.96";
     // const char* server_name = "localhost";
     struct sockaddr_in srv_addr; // Create socket structure
     memset(&srv_addr, 0, sizeof(srv_addr));
