@@ -12,9 +12,9 @@
 #pragma pack(1)
 struct myheader_hdr {
     uint32_t op;
-    uint32_t key;
-    uint64_t value;
-    uint64_t txTime; // 전송 시간
+    uint64_t key;
+    char value[128];
+    uint64_t txTime;
     uint64_t latency;
     uint64_t seqNum;
 } __attribute__((packed));
@@ -27,14 +27,12 @@ struct ThreadArgs {
 };
 
 uint64_t get_cur_ns();
-uint64_t get_cur_s();
 void* txThread(void*);
 void* rxThread(void*);
 uint64_t cal_99th(uint64_t*, int);
 uint64_t cal_median(uint64_t*, int);
 int compare(const void*, const void*);
-void recordLatencyStats(double, double);
-void recordLatency(uint64_t*, int);
+void recordLatency(double, double);
 
 #define FILENAME "latency.txt"
 
@@ -56,8 +54,8 @@ int main(int argc, char* argv[]) {
     totalReqs = starting_QPS * TOTAL_SECONDS;
 
     int SERVER_PORT = 5001;
-    const char* server_name = "130.127.134.79";
-    // const char* server_name = "localhost";
+    // const char* server_name = "130.127.134.51";
+    const char* server_name = "localhost";
     struct sockaddr_in srv_addr; // Create socket structure
     memset(&srv_addr, 0, sizeof(srv_addr));
     srv_addr.sin_family = AF_INET;
@@ -105,7 +103,7 @@ int main(int argc, char* argv[]) {
         }
         pthread_create(&rx_tid, NULL, rxThread, (void*)&rx_args);
 
-        printf("Tx QPS: %d\n", TARGET_QPS);
+        // printf("Tx QPS: %d\n", TARGET_QPS);
 
         pthread_join(tx_tid, NULL);
         pthread_join(rx_tid, NULL);
@@ -144,14 +142,18 @@ void* txThread(void* arg) {
             ;
 
         // 요청 생성 및 전송
+        char* newValue = "initializedredisdatainitializedredisdatainitializedredisdatainitializedredisdatainitializedredisdatainitializedredisdatainitial\0";
         struct myheader_hdr SendBuffer;
         memset(&SendBuffer, 0, sizeof(SendBuffer));
         SendBuffer.op = (rand() % 100 < WRITE_RATIO) ? 1 : 0;
         SendBuffer.key = rand() % 1000000;
-        SendBuffer.value = 1111;
+        strcpy(SendBuffer.value, newValue);
         SendBuffer.txTime = get_cur_ns(); // 전송 시간 설정
         SendBuffer.latency = 0;
         SendBuffer.seqNum = i;
+
+        // for debugging
+        // printf("Tx seq#: %ld\n", SendBuffer.seqNum);
 
         sendto(sock, &SendBuffer, sizeof(SendBuffer), 0, (struct sockaddr*)&srv_addr, sizeof(srv_addr));
     }
@@ -199,20 +201,20 @@ void* rxThread(void* arg) {
         latencies[rxReqs] = RecvBuffer.latency;
         sum += RecvBuffer.latency;
 
-        /* for debugging
-        printf("Rx seq_num: %ld\n", RecvBuffer.seqNum);
-        */
+        // for debugging
+        // printf("Rx seq_num: %ld\n", RecvBuffer.seqNum);
+       
         rxReqs++;
     }
 
     // 수신된 요청 수
-    printf("receivedReqs: %d\n", rxReqs);
+    printf("Received reqs: %d\n", rxReqs);
 
     // 총 요청 수만큼 수신해야 latency 기록
     if (rxReqs == totalReqs) {
         recordLatency(latencies, rxReqs);
 
-        
+
         // median latency
         median = (double)cal_median(latencies, rxReqs);
         printf("Median latency: %.2lf ns\n", (double)median);
@@ -220,9 +222,6 @@ void* rxThread(void* arg) {
         // 99th percentile latency
         percentile_99 = (double)cal_99th(latencies, rxReqs);
         printf("99th percentile latency: %.2lf ns\n", (double)percentile_99);
-
-        // recordLatencyStats(median, percentile_99);
-       
     }
 
     return NULL;
@@ -260,25 +259,13 @@ int compare(const void* a, const void* b) {
     return (*(uint64_t*)a - *(uint64_t*)b);
 }
 
-void recordLatencyStats(double median, double tailLatency) {
-    FILE* file = fopen(FILENAME, "a");
-    if (file == NULL) {
-        printf("Error opening file.\n");
-        return;
-    }
-
-    fprintf(file, "%d    %.2lf    %.2lf\n", TARGET_QPS, median, tailLatency);
-
-    fclose(file);
-}
-
 void recordLatency(uint64_t* latencies, int rxReqs) {
     FILE* file = fopen(FILENAME, "a");
     if (file == NULL) {
         printf("Error opening file.\n");
         return;
     }
-    
+
     for (int i = 0; i < rxReqs; i++) {
         double latency = latencies[i];
         fprintf(file, "%d    %.2lf\n", rxReqs / 10, latency);
